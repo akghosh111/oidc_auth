@@ -230,8 +230,8 @@
           <path d="M20 21a8 8 0 1 0-16 0"/>
         </svg>
       </div>
-      <h1>Welcome back</h1>
-      <p class="subtitle">Sign in to your account to continue</p>
+      <h1 id="headerTitle">Welcome back</h1>
+      <p class="subtitle" id="headerSubtitle">Sign in to your account to continue</p>
     </div>
 
     <form class="form" id="loginForm" novalidate>
@@ -271,7 +271,7 @@
     </form>
 
     <div class="footer">
-      Don't have an account? <a href="/signup.html">Sign up</a>
+      Don't have an account? <a href="/o/signup" id="signupLink">Sign up</a>
     </div>
   </div>
 
@@ -281,8 +281,27 @@
     const spinner = document.getElementById('spinner');
     const btnText = document.getElementById('btnText');
     const errorMsg = document.getElementById('errorMsg');
+    const signupLink = document.getElementById('signupLink');
 
     const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('client_id');
+
+    // Update signup link to preserve all query parameters
+    if (window.location.search) {
+      signupLink.href = `/o/signup${window.location.search}`;
+    }
+
+    if (clientId) {
+      fetch(`/o/application-info?client_id=${clientId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.name) {
+            document.getElementById('headerTitle').textContent = `Continue to ${data.name}`;
+            document.getElementById('headerSubtitle').textContent = `Sign in to access ${data.name}`;
+          }
+        })
+        .catch(console.error);
+    }
 
     function showError(msg) {
       errorMsg.textContent = msg;

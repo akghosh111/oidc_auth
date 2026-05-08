@@ -235,8 +235,8 @@
           <path d="M20 21a8 8 0 1 0-16 0"/>
         </svg>
       </div>
-      <h1>Create an account</h1>
-      <p class="subtitle">Enter your details to get started</p>
+      <h1 id="headerTitle">Create an account</h1>
+      <p class="subtitle" id="headerSubtitle">Enter your details to get started</p>
     </div>
 
     <form class="form" id="signupForm" novalidate>
@@ -283,7 +283,7 @@
     </form>
 
     <div class="footer">
-      Already have an account? <a href="/o/authenticate">Sign in</a>
+      Already have an account? <a href="/o/authenticate" id="signinLink">Sign in</a>
     </div>
   </div>
 
@@ -297,8 +297,26 @@
     const passwordInput = document.getElementById('password');
     const confirmInput = document.getElementById('confirmPassword');
     const confirmHint = document.getElementById('confirmHint');
+    const signinLink = document.getElementById('signinLink');
 
     const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('client_id');
+
+    if (window.location.search) {
+      signinLink.href = `/o/authenticate${window.location.search}`;
+    }
+
+    if (clientId) {
+      fetch(`/o/application-info?client_id=${clientId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.name) {
+            document.getElementById('headerTitle').textContent = `Create account for ${data.name}`;
+            document.getElementById('headerSubtitle').textContent = `Sign up to access ${data.name}`;
+          }
+        })
+        .catch(console.error);
+    }
 
     confirmInput.addEventListener('input', () => {
       const mismatch = confirmInput.value && confirmInput.value !== passwordInput.value;

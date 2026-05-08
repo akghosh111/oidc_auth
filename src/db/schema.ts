@@ -24,3 +24,20 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").$onUpdate(() => new Date()),
 });
+
+export const applicationsTable = pgTable("applications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  url: varchar("url", { length: 255 }).notNull(),
+  redirectUri: varchar("redirect_uri", { length: 255 }).notNull(),
+  secret: varchar("secret", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const authorizationCodesTable = pgTable("authorization_codes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: varchar("code", { length: 255 }).notNull(),
+  userId: uuid("user_id").references(() => usersTable.id).notNull(),
+  applicationId: uuid("application_id").references(() => applicationsTable.id).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
