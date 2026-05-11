@@ -43,3 +43,14 @@ export const authorizationCodesTable = pgTable("authorization_codes", {
   applicationId: uuid("application_id").references(() => applicationsTable.id).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
 });
+
+export const refreshTokensTable = pgTable("refresh_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tokenHash: text("token_hash").notNull(),
+  userId: uuid("user_id").references(() => usersTable.id).notNull(),
+  applicationId: uuid("application_id").references(() => applicationsTable.id).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  consumedAt: timestamp("consumed_at"),
+  replacedByTokenId: uuid("replaced_by_token_id"), // for rotation tracking
+  revokedAt: timestamp("revoked_at"),
+});
