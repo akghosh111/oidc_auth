@@ -37,6 +37,8 @@ export const applicationsTable = pgTable("applications", {
 export const authorizationCodesTable = pgTable("authorization_codes", {
   id: uuid("id").primaryKey().defaultRandom(),
   code: varchar("code", { length: 255 }).notNull(),
+  codeChallenge: text("code_challenge"),
+  codeChallengeMethod: varchar("code_challenge_method", { length: 10 }),
   userId: uuid("user_id").references(() => usersTable.id).notNull(),
   applicationId: uuid("application_id").references(() => applicationsTable.id).notNull(),
   expiresAt: timestamp("expires_at").notNull(),

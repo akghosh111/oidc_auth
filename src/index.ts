@@ -94,7 +94,7 @@ app.get("/.well-known/openid-configuration", (req, res) => {
 });
 
 app.post("/o/tokeninfo", async (req, res) => {
-  const { code, client_secret } = req.body;
+  const { code, client_secret, code_verifier } = req.body;
 
   if (!code || !client_secret) {
     res.status(400).json({ message: "code and client_secret are required" });
@@ -133,6 +133,42 @@ app.post("/o/tokeninfo", async (req, res) => {
   if (authCode.expiresAt < new Date()) {
     res.status(400).json({ message: "Code has expired" });
     return;
+  }
+
+  // PKCE Verification
+if (authCode.codeChallenge) {
+  if (!code_verifier) {
+    res.status(400).json({
+      message: "code_verifier is required",
+    });
+    return;
+  }
+
+  let generatedChallenge: string;
+
+  if (
+      authCode.codeChallengeMethod === "S256" ||
+      !authCode.codeChallengeMethod
+    ) {
+      generatedChallenge = crypto
+        .createHash("sha256")
+        .update(code_verifier)
+        .digest("base64url");
+    } else if (authCode.codeChallengeMethod === "plain") {
+      generatedChallenge = code_verifier;
+    } else {
+      res.status(400).json({
+        message: "Unsupported code challenge method",
+      });
+      return;
+    }
+
+    if (generatedChallenge !== authCode.codeChallenge) {
+      res.status(400).json({
+        message: "Invalid code_verifier",
+      });
+      return;
+    }
   }
 
   const [user] = await db
@@ -183,6 +219,14 @@ app.get("/.well-known/jwks.json", async (req, res) => {
 });
 
 app.get("/o/authenticate", (req, res) => {
+  const {
+    client_id,
+    redirect_uri,
+    state,
+    code_challenge,
+    code_challenge_method,
+  } = req.query;
+
   return res.sendFile(path.resolve("public", "authenticate.html"));
 });
 
@@ -191,7 +235,14 @@ app.get("/o/signup", (req, res) => {
 });
 
 app.post("/o/authenticate/sign-in", async (req, res) => {
-  const { email, password, client_id, redirect_uri } = req.body;
+  const { 
+    email,
+    password,
+    client_id,
+    redirect_uri,
+    code_challenge,
+    code_challenge_method,
+   } = req.body;
 
   if(!email || !password) {
     res.status(400).json({ message: "Email and password are required" });
@@ -245,6 +296,8 @@ app.post("/o/authenticate/sign-in", async (req, res) => {
       userId: user.id,
       applicationId: application.id,
       expiresAt,
+      codeChallenge: code_challenge ?? null,
+      codeChallengeMethod: code_challenge_method ?? "S256",
     });
 
     const redirectUrl = new URL(application.redirectUri);
@@ -278,7 +331,15 @@ app.post("/o/authenticate/sign-in", async (req, res) => {
 
 
 app.post("/o/authenticate/sign-up", async (req, res) => {
-  const { firstName, lastName, email, password, client_id } = req.body;
+  const { 
+    firstName,
+    lastName,
+    email,
+    password,
+    client_id,
+    code_challenge,
+    code_challenge_method,
+   } = req.body;
 
   if (!email || !password || !firstName) {
     res
@@ -330,6 +391,8 @@ app.post("/o/authenticate/sign-up", async (req, res) => {
           userId: newUser.id,
           applicationId: application.id,
           expiresAt,
+          codeChallenge: code_challenge ?? null,
+          codeChallengeMethod: code_challenge_method ?? "S256",
         });
 
         const redirectUrl = new URL(application.redirectUri);
