@@ -6,10 +6,77 @@ A production-ready OpenID Connect (OIDC) authentication server built with Node.j
 
 - **OIDC Discovery**: Implementation of `.well-known/openid-configuration`.
 - **Authorization Code Flow**: Secure exchange of authorization codes for access and refresh tokens.
+- **PKCE (Proof Key for Code Exchange)**: Enhanced security for public and private clients, protecting against authorization code injection.
+- **Refresh Token Rotation**: Automatic token replacement and reuse detection to mitigate session hijacking risks.
 - **Application Management**: Administrative interface for registering third-party applications.
 - **Dynamic Context**: Authentication and registration screens that adapt based on the requesting application.
 - **JWT Issuance**: RSA256 signed tokens for secure identity propagation.
 - **User Management**: Integrated sign-in and sign-up processes with salt-based password hashing.
+
+## Architecture & Flow
+
+### System Architecture
+
+- **Runtime**: Node.js with Express.
+- **Database**: PostgreSQL with Drizzle ORM.
+- **Cryptography**: `node-jose` for JWKS and `jsonwebtoken` for signing.
+- **Frontend**: Vanilla JavaScript and CSS served as static assets.
+
+```mermaid
+graph TD
+    User((User))
+    App[Third-Party App]
+    AuthServer[Auth Server (Express)]
+    DB[(PostgreSQL)]
+    Cert[RSA Keys (cert/)]
+
+    User <--> App
+    App <--> AuthServer
+    AuthServer <--> DB
+    AuthServer <--> Cert
+    
+    subgraph "Auth Server (Node.js)"
+        Endpoints[OIDC Endpoints]
+        Logic[Auth & Token Logic]
+        Drizzle[Drizzle ORM]
+    end
+```
+
+### Authorization & Token Flow (with PKCE & Rotation)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App as Third-Party App
+    participant Auth as Auth Server
+    participant DB as Database
+
+    Note over User, Auth: 1. Authorization Request (PKCE)
+    App->>Auth: GET /o/authenticate (client_id, code_challenge, ...)
+    Auth-->>User: Sign-in / Sign-up Page
+    User->>Auth: POST /o/authenticate/sign-in (creds, code_challenge)
+    Auth->>DB: Verify User & Store Auth Code + Challenge
+    Auth-->>App: 302 Redirect (code)
+
+    Note over App, Auth: 2. Token Exchange
+    App->>Auth: POST /o/tokeninfo (code, code_verifier, client_secret)
+    Auth->>DB: Validate Code, Verifier & Application
+    DB-->>Auth: Valid
+    Auth->>DB: Store Refresh Token Hash
+    Auth-->>App: 200 OK (access_token, refresh_token)
+
+    Note over App, Auth: 3. Refresh Token Rotation
+    App->>Auth: POST /o/tokeninfo (grant_type=refresh_token, refresh_token)
+    Auth->>DB: Validate Refresh Token (not consumed/revoked)
+    Auth->>DB: Mark old token consumed, Issue new Refresh Token
+    Auth-->>App: 200 OK (access_token, new_refresh_token)
+
+    Note over App, Auth: 4. Reuse Detection (Security)
+    App->>Auth: POST /o/tokeninfo (grant_type=refresh_token, OLD_refresh_token)
+    Auth->>DB: Detect reuse (consumedAt is set)
+    Auth->>DB: Revoke all tokens for User/App session
+    Auth-->>App: 401 Unauthorized (Reuse detected)
+```
 
 ## Prerequisites
 
@@ -130,10 +197,3 @@ Response:
 ### Internal
 - `GET /o/application-info`: Fetches public metadata for a specific application.
 - `GET /health`: System health check endpoint.
-
-## Architecture
-
-- **Runtime**: Node.js with Express.
-- **Database**: PostgreSQL with Drizzle ORM.
-- **Cryptography**: `node-jose` for JWKS and `jsonwebtoken` for signing.
-- **Frontend**: Vanilla JavaScript and CSS served as static assets.
