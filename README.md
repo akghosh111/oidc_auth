@@ -25,10 +25,10 @@ A production-ready OpenID Connect (OIDC) authentication server built with Node.j
 ```mermaid
 graph TD
     User((User))
-    App[Third-Party App]
-    AuthServer[Auth Server (Express)]
-    DB[(PostgreSQL)]
-    Cert[RSA Keys (cert/)]
+    App["Third-Party App"]
+    AuthServer["Auth Server (Express)"]
+    DB[("PostgreSQL")]
+    Cert["RSA Keys (cert/)"]
 
     User <--> App
     App <--> AuthServer
@@ -36,9 +36,9 @@ graph TD
     AuthServer <--> Cert
     
     subgraph "Auth Server (Node.js)"
-        Endpoints[OIDC Endpoints]
-        Logic[Auth & Token Logic]
-        Drizzle[Drizzle ORM]
+        Endpoints["OIDC Endpoints"]
+        Logic["Auth & Token Logic"]
+        Drizzle["Drizzle ORM"]
     end
 ```
 
